@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CheckBox TM</title>
+<style>
+body{font-family:Arial;background:#f4f6f8;margin:0;padding:10px}
+header{text-align:center}
+.card,.box{background:#fff;padding:12px;margin:10px 0;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+.hidden{display:none}
+input,select,button{width:100%;padding:8px;margin:5px 0}
+button{background:#004aad;color:#fff;border:none;border-radius:5px}
+.Valparaiso{border-left:6px solid #1e90ff}
+.Casablanca{border-left:6px solid #2ecc71}
+</style>
+</head>
+<body>
+<header>
+<h1>CheckBox TM</h1>
+<p>Control de Beneficios – Tres Montes</p>
+</header>
+
+<section id="login" class="card">
+<h2>Ingreso</h2>
+<input id="usuario" placeholder="Usuario">
+<input id="password" type="password" placeholder="Contraseña">
+<select id="planta">
+<option value="">Seleccione Planta</option>
+<option value="Valparaiso">Valparaíso</option>
+<option value="Casablanca">Casablanca</option>
+</select>
+<select id="rol">
+<option value="guardia">Guardia</option>
+<option value="rrhh">RR.HH.</option>
+</select>
+<button onclick="ingresar()">Ingresar</button>
+</section>
+
+<section id="perfilGuardia" class="hidden">
+<h2>👮 Guardia: <span id="nombreGuardia"></span></h2>
+<div class="box">
+<h3>Escaneo / Registro</h3>
+<button onclick="escanearQR()">📷 Simular Escaneo QR</button>
+<input id="rutTrab" placeholder="RUT trabajador">
+<input id="nombreTrab" placeholder="Nombre trabajador">
+<input id="plantaTrab" placeholder="Planta">
+<input id="contratoTrab" placeholder="Contrato">
+<select id="beneficio">
+<option>Bono</option><option>Caja</option><option>Aguinaldo</option>
+</select>
+<button onclick="registrarEntrega()">Registrar Entrega</button>
+</div>
+<div id="historial"></div>
+<button onclick="cerrarSesion()">Cerrar sesión</button>
+</section>
+
+<section id="perfilRRHH" class="hidden">
+<h2>🧑‍💼 RR.HH.</h2>
+<div id="nomina"></div>
+<button onclick="cerrarSesion()">Cerrar sesión</button>
+</section>
+
+<script>
+// ===== DATOS BASE =====
+if(!localStorage.getItem("trabajadores")){
+localStorage.setItem("trabajadores",JSON.stringify([
+{rut:"18005430-8",nombre:"Ana Rojas",planta:"Valparaiso",contrato:"Indefinido",horas:180,licencia:"No",beneficios:"Bono"},
+{rut:"15444322-1",nombre:"Luis Pérez",planta:"Casablanca",contrato:"Plazo Fijo",horas:160,licencia:"Si",beneficios:"Caja"}
+]));}
+if(!localStorage.getItem("bitacora")){localStorage.setItem("bitacora",JSON.stringify([]));}
+let usuarioActual="";
+
+function ingresar(){
+const u=document.getElementById("usuario").value;
+const p=document.getElementById("password").value;
+const r=document.getElementById("rol").value;
+const pl=document.getElementById("planta").value;
+if(!u||!p||!pl){alert("Complete todos los campos");return;}
+usuarioActual=u;
+document.getElementById("login").classList.add("hidden");
+if(r==="guardia"){
+document.getElementById("perfilGuardia").classList.remove("hidden");
+document.getElementById("nombreGuardia").innerText=u+" ("+pl+")";
+mostrarHistorial();
+}else{
+document.getElementById("perfilRRHH").classList.remove("hidden");
+cargarNomina();
+}}
+
+function cerrarSesion(){location.reload();}
+
+function escanearQR(){
+const t=JSON.parse(localStorage.getItem("trabajadores"));
+const x=t[Math.floor(Math.random()*t.length)];
+rutTrab.value=x.rut;nombreTrab.value=x.nombre;plantaTrab.value=x.planta;contratoTrab.value=x.contrato;
+}
+
+function registrarEntrega(){
+const bit=JSON.parse(localStorage.getItem("bitacora"));
+const hoy=new Date().toLocaleDateString();
+if(bit.find(b=>b.rut===rutTrab.value&&b.beneficio===beneficio.value&&b.fecha===hoy)){
+alert("⚠ Beneficio ya entregado hoy");return;}
+bit.push({rut:rutTrab.value,nombre:nombreTrab.value,planta:plantaTrab.value,contrato:contratoTrab.value,beneficio:beneficio.value,fecha:hoy,hora:new Date().toLocaleTimeString(),guardia:usuarioActual});
+localStorage.setItem("bitacora",JSON.stringify(bit));
+alert("✔ Entrega registrada");
+mostrarHistorial();
+}
+
+function mostrarHistorial(){
+const h=document.getElementById("historial");h.innerHTML="";
+JSON.parse(localStorage.getItem("bitacora")).forEach(b=>{
+h.innerHTML+=`<div class="card ${b.planta}"><b>${b.nombre}</b> (${b.rut})<br>${b.beneficio}<br>${b.fecha} ${b.hora}<br>Guardia: ${b.guardia}</div>`;});}
+
+function cargarNomina(){
+const n=document.getElementById("nomina");n.innerHTML="";
+JSON.parse(localStorage.getItem("trabajadores")).forEach((t,i)=>{
+n.innerHTML+=`<div class="card ${t.planta}">
+<input value="${t.nombre}" onchange="editar(${i},'nombre',this.value)">
+<input value="${t.rut}" onchange="editar(${i},'rut',this.value)">
+<input value="${t.planta}" onchange="editar(${i},'planta',this.value)">
+<input value="${t.contrato}" onchange="editar(${i},'contrato',this.value)">
+<input value="${t.horas}" onchange="editar(${i},'horas',this.value)">
+<input value="${t.licencia}" onchange="editar(${i},'licencia',this.value)">
+<input value="${t.beneficios}" onchange="editar(${i},'beneficios',this.value)">
+</div>`;});}
+
+function editar(i,c,v){const t=JSON.parse(localStorage.getItem("trabajadores"));t[i][c]=v;localStorage.setItem("trabajadores",JSON.stringify(t));}
+</script>
+</body>
+</html>
